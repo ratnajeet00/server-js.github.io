@@ -1,10 +1,6 @@
-const express = require('express');
+const http = require('http');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
-
-const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 const dbPath = './database.db';
 const db = new sqlite3.Database(dbPath);
@@ -27,44 +23,53 @@ db.serialize(() => {
   });
 });
 
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
+const server = http.createServer((req, res) => {
+  // Parse JSON request bodies
+  bodyParser.json()(req, res, () => {
+    const { url, method, body } = req;
 
-  db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, row) => {
-    if (row) {
-      res.status(200).json({ message: 'Login successful' });
+    if (url === '/login' && method === 'POST') {
+      const { username, password } = body;
+
+      db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, row) => {
+        if (row) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'Login successful' }));
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'Invalid username or password' }));
+        }
+      });
+    } else if (url === '/addUser' && method === 'POST') {
+      const { username, password } = body;
+
+      db.get('SELECT * FROM users WHERE username = ?', username, (err, row) => {
+        if (row) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'Username already exists' }));
+        } else {
+          const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+          stmt.run(username, password);
+          stmt.finalize();
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'User created successfully' }));
+        }
+      });
+    } else if (url === '/userList' && method === 'GET') {
+      db.all('SELECT * FROM users', (err, rows) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(rows));
+      });
     } else {
-      res.status(401).json({ message: 'Invalid username or password' });
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: 'Not found' }));
     }
-  });
-});
-
-app.post('/addUser', (req, res) => {
-  const { username, password } = req.body;
-
-  db.get('SELECT * FROM users WHERE username = ?', username, (err, row) => {
-    if (row) {
-      res.status(400).json({ message: 'Username already exists' });
-    } else {
-      const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
-      stmt.run(username, password);
-      stmt.finalize();
-
-      res.status(200).json({ message: 'User created successfully' });
-    }
-  });
-});
-
-app.get('/userList', (req, res) => {
-  db.all('SELECT * FROM users', (err, rows) => {
-    res.json(rows);
   });
 });
 
 const PORT = 3000;
 
-const server = app.listen(PORT, () => {
-  const host = server.address().address;
-  const port = server.address().port;
-  console.log(`Server is running on http://${host}:${port}`);
+server.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
