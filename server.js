@@ -1,5 +1,4 @@
 const http = require('http');
-const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 
 const dbPath = './database.db';
@@ -24,9 +23,14 @@ db.serialize(() => {
 });
 
 const server = http.createServer((req, res) => {
-  // Parse JSON request bodies
-  bodyParser.json()(req, res, () => {
-    const { url, method, body } = req;
+  let data = '';
+  req.on('data', chunk => {
+    data += chunk;
+  });
+
+  req.on('end', () => {
+    const { url, method } = req;
+    const body = JSON.parse(data);
 
     if (url === '/login' && method === 'POST') {
       const { username, password } = body;
