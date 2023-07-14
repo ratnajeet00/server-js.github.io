@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Express App</title>
+</head>
+<body>
+  <h1>Express App</h1>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    function addUser() {
+      // Function to add a new user
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const email = document.getElementById("email").value;
+
+      axios.post("/addUser", { username, password, email })
+        .then(response => {
+          alert(response.data.message);
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    }
+
+    function viewOrders() {
+      // Function to view orders
+      axios.get("/viewOrders")
+        .then(response => {
+          const orders = response.data;
+          // Display the orders on the page
+          const ordersContainer = document.getElementById("ordersContainer");
+          ordersContainer.innerHTML = JSON.stringify(orders, null, 2);
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    }
+
+    // Add more functions for other API endpoints as needed
+
+    // Example usage of the functions
+    addUser();
+    viewOrders();
+  </script>
+</body>
+</html>
